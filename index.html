@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>WhatsApp Clone</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { 
+            margin: 0; 
+            background-color: #0b141a; 
+            color: #e9edef; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            display: flex; 
+            flex-direction: column; 
+            height: 100dvh; 
+            width: 100vw;
+            overflow: hidden;
+        }
+        
+        /* WhatsApp Signature Header */
+        header { 
+            background: #202c33; 
+            padding: 12px 16px; 
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid #222e35;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+        }
+        .avatar-main {
+            width: 40px;
+            height: 40px;
+            background: #6a7175;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+            color: white;
+        }
+        .header-info {
+            display: flex;
+            flex-direction: column;
+        }
+        .header-title { font-weight: 600; font-size: 16px; color: #e9edef; }
+        .header-status { font-size: 12px; color: #8696a0; margin-top: 2px; }
+
+        /* Scrollable Message Arena with custom background look */
+        #chat-box { 
+            flex: 1; 
+            padding: 16px; 
+            overflow-y: auto; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 8px; 
+            background-color: #0b141a;
+            /* Optional: Simple matrix dot pattern styling to look like WhatsApp wallpaper background */
+            background-image: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 0);
+            background-size: 24px 24px;
+        }
+
+        /* Message Bubble Structural Alignment */
+        .msg-row {
+            display: flex;
+            width: 100%;
+            margin-bottom: 2px;
+        }
+        /* Put other people on the left */
+        .msg-row.incoming { justify-content: flex-start; }
+        /* Put YOUR messages on the right */
+        .msg-row.outgoing { justify-content: flex-start; direction: rtl; }
+
+        .msg-bubble { 
+            padding: 8px 12px; 
+            border-radius: 8px; 
+            max-width: 75%; 
+            position: relative;
+            box-shadow: 0 1px 1px rgba(0,0,0,0.2);
+            direction: ltr; /* Reset text direction inside bubble */
+            text-align: left;
+        }
+        
+        /* WhatsApp Green Color Palette for Outgoing text */
+        .msg-row.outgoing .msg-bubble { 
+            background: #005c4b; 
+            color: #e9edef;
+            border-top-right-radius: 0px;
+        }
+        /* Dark Gray Palette for Incoming text */
+        .msg-row.incoming .msg-bubble { 
+            background: #202c33; 
+            color: #e9edef;
+            border-top-left-radius: 0px;
+        }
+
+        .msg-bubble .name { 
+            font-size: 12px; 
+            color: #53bdeb; 
+            font-weight: 600; 
+            margin-bottom: 3px; 
+        }
+        /* Override name indicator color for your own text rows */
+        .msg-row.outgoing .name { color: #00a884; }
+
+        .msg-bubble .text { 
+            font-size: 14.5px; 
+            line-height: 1.4;
+            word-break: break-word; 
+        }
+        
+        /* Input Bar area styled like mobile WhatsApp */
+        #input-container { 
+            padding: 10px; 
+            background: #202c33; 
+            display: flex; 
+            align-items: center;
+            gap: 8px; 
+        }
+        input { 
+            background: #2a3942; 
+            border: none; 
+            color: #e9edef; 
+            padding: 12px; 
+            border-radius: 8px; 
+            font-size: 15px; 
+            outline: none;
+        }
+        input::placeholder { color: #8696a0; }
+        #username { width: 90px; text-align: center; font-weight: bold; border-right: 1px solid #3b4a54; border-radius: 8px 0 0 8px; }
+        #message { flex: 1; border-radius: 24px; padding-left: 18px; }
+        
+        #send-btn { 
+            background: #00a884; 
+            color: #0b141a; 
+            border: none; 
+            width: 45px;
+            height: 45px;
+            border-radius: 50%; 
+            font-size: 18px;
+            cursor: pointer; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        #send-btn:active { background: #008f72; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="avatar-main">🚀</div>
+        <div class="header-info">
+            <div class="header-title">Form 1 Coding Room</div>
+            <div class="header-status">online</div>
+        </div>
+    </header>
+
+    <div id="chat-box">
+        <!-- Live synced messages render here -->
+    </div>
+
+    <div id="input-container">
+        <input type="text" id="username" placeholder="Name" maxlength="12">
+        <input type="text" id="message" placeholder="Type a message..." autocomplete="off">
+        <button id="send-btn">✈️</button>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://gstatic.com";
+        import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from "https://gstatic.com";
+
+        // ⚠️ DROP YOUR CONFIG OBJECT EXTRACTED FROM FIREBASE CONSOLE HERE:
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_://firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_://appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const messagesRef = collection(db, "messages");
+
+        const chatBox = document.getElementById("chat-box");
+        const messageInput = document.getElementById("message");
+        const usernameInput = document.getElementById("username");
+        const sendBtn = document.getElementById("send-btn");
+
+        // Simple trick: load saved username from device memory if it exists
+        if(localStorage.getItem("chat_name")) {
+            usernameInput.value = localStorage.getItem("chat_name");
+        } else {
+            usernameInput.value = "User_" + Math.floor(Math.random() * 900 + 100);
+        }
+
+        async function sendMessage() {
+            const text = messageInput.value.trim();
+            const name = usernameInput.value.trim() || "Anonymous";
+
+            if (text === "") return;
+
+            // Save name local choice so they don't have to retype it
+            localStorage.setItem("chat_name", name);
+            messageInput.value = ""; 
+
+            try {
+                await addDoc(messagesRef, {
+                    name: name,
+                    text: text,
+                    createdAt: serverTimestamp()
+                });
+            } catch (error) {
+                console.error("Error sending message: ", error);
+            }
+        }
+
+        sendBtn.onclick = sendMessage;
+        messageInput.onkeydown = (e) => { if (e.key === "Enter") sendMessage(); };
+
+        const q = query(messagesRef, orderBy("createdAt", "asc"));
+        onSnapshot(q, (snapshot) => {
+            chatBox.innerHTML = ""; 
+            const currentClientName = usernameInput.value.trim();
+
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                if (!data.text) return;
+
+                // Sort out if message belongs to you or your friends
+                const isMyMessage = (data.name === currentClientName);
+                
+                const rowDiv = document.createElement("div");
+                rowDiv.className = isMyMessage ? "msg-row outgoing" : "msg-row incoming";
+
+                rowDiv.innerHTML = `
+                    <div class="msg-bubble">
+                        <div class="name">${data.name || "Anonymous"}</div>
+                        <div class="text">${data.text}</div>
+                    </div>
+                `;
+                chatBox.appendChild(rowDiv);
+            });
+            chatBox.scrollTop = chatBox.scrollHeight; 
+        });
+    </script>
+</body>
+</html>
